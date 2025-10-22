@@ -1,10 +1,11 @@
 import { useAuth } from './context/AuthContext';
 import './App.css';
 
-import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, Outlet, Link } from 'react-router-dom';
 
 import LoginPage from './pages/LoginPage';
 import ProfessorDashboardPage from './pages/ProfessorDashboardPage';
+import CadastroAlunoPage from './pages/CadastroAlunoPage';
 
 import AppBar from '@mui/material/AppBar';
 import Box from '@mui/material/Box';
@@ -12,12 +13,13 @@ import Toolbar from '@mui/material/Toolbar';
 import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
 import CircularProgress from '@mui/material/CircularProgress';
+// ✨ ALTERAÇÃO AQUI: Importa um ícone para o título
+import SchoolIcon from '@mui/icons-material/School';
 
-// --- Componente Auxiliar para Rotas Protegidas ---
+
+// --- Componente Auxiliar para Rotas Protegidas (inalterado) ---
 function ProtectedRoute() {
   const { logado, loading } = useAuth();
-
-  // Se ainda está a verificar o estado inicial (localStorage)
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
@@ -25,36 +27,43 @@ function ProtectedRoute() {
       </Box>
     );
   }
-
-  // ✨ ALTERAÇÃO AQUI: Se NÃO estiver logado, inicia o redirecionamento
-  // e retorna null imediatamente para evitar renderizar o Outlet antigo.
   if (!logado) {
-    // O componente Navigate vai tratar do redirecionamento na próxima renderização do router
     return <Navigate to="/login" replace />;
-    // Retornar null aqui explicitamente pode não ser necessário se o Navigate funcionar como esperado,
-    // mas vamos manter assim por enquanto como tentativa de correção.
-    // Se o problema persistir, remover a linha abaixo pode ser um teste.
-    // return null;
   }
-
-  // Se passou pelas verificações (loading=false E logado=true), renderiza a rota filha
   return <Outlet />;
 }
 
 
-// --- Componente Auxiliar para Layout Principal ---
-// (MainLayout permanece igual)
+// --- ✨ ALTERAÇÃO AQUI: Layout principal com a Navbar refatorada ---
 function MainLayout() {
     const { logout, usuario } = useAuth();
     return (
         <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
             <AppBar position="static">
                 <Toolbar>
-                    <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-                        Projeto ÍCARO - {usuario?.role}
+                    {/* 1. Título Fixo do Projeto */}
+                    <SchoolIcon sx={{ mr: 1 }} />
+                    <Typography variant="h6" component="div">
+                        Projeto ÍCARO
+                    </Typography>
+
+                    {/* 2. Caixa com os Links de Navegação */}
+                    <Box sx={{ flexGrow: 1, ml: 2 }}>
+                        <Button color="inherit" component={Link} to="/">
+                            Dashboard
+                        </Button>
+                        <Button color="inherit" component={Link} to="/cadastrar-aluno">
+                            Cadastrar Aluno
+                        </Button>
+                        {/* Adicione novos links aqui no futuro */}
+                    </Box>
+
+                    {/* 3. Informações do Usuário e Botão de Sair */}
+                    <Typography sx={{ mr: 2, display: { xs: 'none', sm: 'block' } }}>
+                        {usuario?.email}
                     </Typography>
                     <Button color="inherit" onClick={logout}>
-                        Sair (Logout)
+                        Sair
                     </Button>
                 </Toolbar>
             </AppBar>
@@ -65,8 +74,7 @@ function MainLayout() {
     );
 }
 
-// --- Componente Principal App ---
-// (App permanece igual)
+// --- Componente Principal App (inalterado) ---
 function App() {
   return (
     <BrowserRouter>
@@ -75,6 +83,7 @@ function App() {
         <Route element={<ProtectedRoute />}>
             <Route element={<MainLayout />}>
                 <Route path="/" element={<HomeDashboard />} />
+                <Route path="/cadastrar-aluno" element={<CadastroAlunoPage />} />
             </Route>
         </Route>
         <Route path="*" element={<Navigate to="/login" replace />} />
@@ -84,16 +93,13 @@ function App() {
 }
 
 
-// --- Componente Auxiliar para Roteamento por Role ---
-// (HomeDashboard permanece igual, a verificação logado && usuario já existe)
+// --- Componente Auxiliar para Roteamento por Role (inalterado) ---
 function HomeDashboard() {
     const { usuario, logado } = useAuth();
-
     if (logado && usuario) {
         if (usuario.role === 'PROFESSOR') {
             return <ProfessorDashboardPage />;
         }
-        // else if (usuario.role === 'ALUNO') { ... }
         else {
              return (
                 <Box sx={{ p: 3 }}>
@@ -103,7 +109,6 @@ function HomeDashboard() {
             );
         }
     }
-    // Retorna null se não estiver logado ou usuario for null
     return null;
 }
 

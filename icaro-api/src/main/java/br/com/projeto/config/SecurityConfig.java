@@ -3,7 +3,6 @@ package br.com.projeto.config;
 import br.com.projeto.config.filter.JwtAuthFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-// ✨ ALTERAÇÃO AQUI: Importa HttpMethod
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
@@ -24,7 +23,7 @@ import java.util.Arrays;
 
 @Configuration
 @EnableWebSecurity
-@EnableMethodSecurity // Mantemos, pois pode ser útil para regras mais complexas no futuro
+@EnableMethodSecurity
 public class SecurityConfig {
 
     private final JwtAuthFilter jwtAuthFilter;
@@ -49,36 +48,14 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                // ✨ ALTERAÇÃO AQUI: Refinamos as regras de autorização
                 .authorizeHttpRequests(authorize -> authorize
-                        // Libera login e registro (se houver)
                         .requestMatchers("/api/v1/auth/**").permitAll()
-
-                        // Regras para TURMAS:
-                        // GET /api/v1/turmas/minhas -> Exige PROFESSOR
-                        .requestMatchers(HttpMethod.GET, "/api/v1/turmas/minhas").hasAuthority("ROLE_PROFESSOR")
-                        // POST /api/v1/turmas -> Exige PROFESSOR
-                        .requestMatchers(HttpMethod.POST, "/api/v1/turmas").hasAuthority("ROLE_PROFESSOR")
-                        // Outros métodos em /api/v1/turmas/** (ex: PUT, DELETE) -> Exige PROFESSOR (ajustar se necessário)
+                        .requestMatchers("/api/v1/totem/**").permitAll()
                         .requestMatchers("/api/v1/turmas/**").hasAuthority("ROLE_PROFESSOR")
-
-                        // Regras para DISCIPLINAS:
-                        // GET /api/v1/disciplinas -> Exige PROFESSOR (por enquanto)
-                        .requestMatchers(HttpMethod.GET, "/api/v1/disciplinas").hasAuthority("ROLE_PROFESSOR")
-                        // Outros métodos em /api/v1/disciplinas/** -> Talvez exigir ADMIN no futuro? Por agora, PROFESSOR.
                         .requestMatchers("/api/v1/disciplinas/**").hasAuthority("ROLE_PROFESSOR")
-
-                        // Regras para AULAS:
-                        // POST /api/v1/aulas (Abrir Chamada) -> Exige PROFESSOR
-                        .requestMatchers(HttpMethod.POST, "/api/v1/aulas").hasAuthority("ROLE_PROFESSOR")
-                        // Outros métodos em /api/v1/aulas/** (GET presenças, PUT fechar) -> Exige PROFESSOR (ajustar se necessário)
                         .requestMatchers("/api/v1/aulas/**").hasAuthority("ROLE_PROFESSOR")
-
-
-                        // TODO: Adicionar regras para Alunos (GET /api/v1/matriculas/minhas, etc.)
-                        // TODO: Adicionar regras para Admin
-
-                        // Qualquer outra requisição não definida acima exige autenticação (mas não role específica)
+                        .requestMatchers("/api/v1/matriculas/**").hasAuthority("ROLE_PROFESSOR")
+                        .requestMatchers("/api/v1/professor/**").hasAuthority("ROLE_PROFESSOR")
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
@@ -89,6 +66,8 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
+        // --- ✨ ALTERAÇÃO AQUI: Removemos o "*" para cumprir a regra de segurança ---
+        // Apenas a origem do frontend é permitida explicitamente.
         configuration.setAllowedOrigins(Arrays.asList("http://localhost:5173"));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD"));
         configuration.setAllowedHeaders(Arrays.asList("*"));

@@ -1,29 +1,30 @@
 package br.com.projeto.repository;
 
-import br.com.projeto.model.Aula; // ✨ ALTERAÇÃO AQUI: Importa a entidade Aula
+import br.com.projeto.model.Aula;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
-import java.util.List; // ✨ ALTERAÇÃO AQUI: Import para listas
+import java.util.List;
+import java.util.Optional; // ✨ ALTERAÇÃO AQUI: Import para Optional
 
-// ✨ ALTERAÇÃO AQUI: Mudamos de "class" para "interface"
 @Repository
 public interface AulaRepository extends JpaRepository<Aula, Long> {
 
-    // (O Spring Data JPA nos dará save(), findById(), findAll(), etc.)
-
-    // --- Métodos de busca customizados que serão úteis ---
-
     /**
      * Busca todas as aulas de uma turma específica.
-     * Útil para o professor ver o histórico de aulas da turma.
      */
-    List<Aula> findByTurmaIdOrderByDataHoraAulaDesc(Long turmaId); // Ordena da mais recente para a mais antiga
+    List<Aula> findByTurmaIdOrderByDataHoraAulaDesc(Long turmaId);
 
     /**
-     * Busca aulas de uma turma que estão em um estado específico (Ex: "ABERTA").
-     * Útil para encontrar a aula atual onde a chamada está ativa.
+     * Busca aulas de uma turma que estão em um estado específico.
      */
     List<Aula> findByTurmaIdAndEstado(Long turmaId, String estado);
+
+    // --- ✨ ALTERAÇÃO AQUI: Novo método para o Totem ---
+    /**
+     * Busca a primeira (mais recente) aula de uma turma que está em um estado específico.
+     * Otimizado para o totem, que só precisa encontrar uma aula aberta, não todas.
+     */
+    Optional<Aula> findFirstByTurmaIdAndEstadoOrderByDataHoraAulaDesc(Long turmaId, String estado);
 
 }

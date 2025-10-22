@@ -1,19 +1,22 @@
 package br.com.projeto.repository;
 
-import br.com.projeto.model.Usuario; // ✨ ALTERAÇÃO AQUI
-import org.springframework.data.jpa.repository.JpaRepository; // ✨ ALTERAÇÃO AQUI
-import org.springframework.stereotype.Repository; // ✨ ALTERAÇÃO AQUI
+import br.com.projeto.model.Usuario;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
 
-import java.util.Optional; // ✨ ALTERAÇÃO AQUI
+import java.util.Optional;
 
-// ✨ ALTERAÇÃO AQUI: Mudamos de "class" para "interface" e estendemos JpaRepository
-@Repository // ✨ ALTERAÇÃO AQUI: Indica ao Spring que esta é uma interface de Repositório (Bean)
+@Repository
 public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
 
-    // ✨ ALTERAÇÃO AQUI: Método de busca customizado.
-    // O Spring Data JPA vai entender esse nome de método e automaticamente
-    // criar uma query SQL (ex: "SELECT * FROM usuarios WHERE email = ?")
-    // Isso é o que o Spring Security usará para o login.
+    // Método para o Spring Security usar no login.
     Optional<Usuario> findByEmail(String email);
-    
+
+    // --- ✨ ALTERAÇÃO AQUI: Novo método para o Totem ---
+    /**
+     * Busca um usuário pela sua matrícula (RA).
+     * Usado pelo TotemController para identificar o aluno via biometria.
+     */
+    Optional<Usuario> findByMatriculaRa(String matriculaRa);
+
 }

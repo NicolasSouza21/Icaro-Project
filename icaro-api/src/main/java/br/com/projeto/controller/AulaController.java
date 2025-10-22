@@ -49,6 +49,13 @@ public class AulaController {
         Turma turma = turmaRepository.findById(requestDTO.getTurmaId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Turma não encontrada"));
 
+        // --- ✨ ALTERAÇÃO AQUI: LOGS PARA DEBUG ---
+        // Adicionamos logs para ver os IDs no console do Spring Boot
+        System.out.println("--- [DEBUG] TENTATIVA DE ABRIR AULA ---");
+        System.out.println("ID do Professor Logado: " + professor.getId() + " (Email: " + professor.getEmail() + ")");
+        System.out.println("ID do Professor associado à Turma " + turma.getId() + ": " + turma.getProfessor().getId() + " (Email: " + turma.getProfessor().getEmail() + ")");
+        // --- FIM DOS LOGS ---
+
         // 3. ✨ VALIDAÇÃO IMPORTANTE: Verifica se a turma pertence ao professor logado
         if (!turma.getProfessor().getId().equals(professor.getId())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Esta turma não pertence a você");

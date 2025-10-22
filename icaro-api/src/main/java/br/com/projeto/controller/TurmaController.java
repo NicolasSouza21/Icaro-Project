@@ -1,11 +1,14 @@
 package br.com.projeto.controller;
 
+import br.com.projeto.dto.AlunoMatriculadoDTO;
 import br.com.projeto.dto.TurmaRequestDTO;
 import br.com.projeto.dto.TurmaResponseDTO;
 import br.com.projeto.model.Disciplina;
+import br.com.projeto.model.Matricula;
 import br.com.projeto.model.Turma;
 import br.com.projeto.model.Usuario;
 import br.com.projeto.repository.DisciplinaRepository;
+import br.com.projeto.repository.MatriculaRepository;
 import br.com.projeto.repository.TurmaRepository;
 import br.com.projeto.repository.UsuarioRepository;
 import lombok.RequiredArgsConstructor;
@@ -17,7 +20,6 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
-// ✨ ALTERAÇÃO AQUI: Imports para a lista
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -29,80 +31,78 @@ public class TurmaController {
     private final TurmaRepository turmaRepository;
     private final UsuarioRepository usuarioRepository;
     private final DisciplinaRepository disciplinaRepository;
+    private final MatriculaRepository matriculaRepository;
 
-    /**
-     * Endpoint para um PROFESSOR criar uma nova Turma.
-     */
     @PostMapping
-    @PreAuthorize("hasAuthority('ROLE_PROFESSOR')") 
+    @PreAuthorize("hasAuthority('ROLE_PROFESSOR')")
     public ResponseEntity<TurmaResponseDTO> criarTurma(@RequestBody TurmaRequestDTO requestDTO) {
-
-        // 1. Pega o usuário (Professor) que está logado (autenticado)
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String emailProfessor = authentication.getName();
-        
         Usuario professor = usuarioRepository.findByEmail(emailProfessor)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Professor não encontrado"));
-
-        // 2. Busca a disciplina pelo ID informado no DTO
         Disciplina disciplina = disciplinaRepository.findById(requestDTO.getDisciplinaId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Disciplina não encontrada"));
-
-        // 3. Cria a nova Turma
         Turma novaTurma = Turma.builder()
                 .nomeTurma(requestDTO.getNomeTurma())
                 .semestre(requestDTO.getSemestre())
-                .professor(professor) // Associa o professor logado
-                .disciplina(disciplina) // Associa a disciplina encontrada
+                .professor(professor)
+                .disciplina(disciplina)
                 .build();
-
-        // 4. Salva no banco
         Turma turmaSalva = turmaRepository.save(novaTurma);
-
-        // 5. Retorna um DTO de Resposta
-        TurmaResponseDTO responseDTO = mapToTurmaResponseDTO(turmaSalva); // ✨ ALTERAÇÃO AQUI: Usa o helper
-
+        TurmaResponseDTO responseDTO = mapToTurmaResponseDTO(turmaSalva);
         return ResponseEntity.status(HttpStatus.CREATED).body(responseDTO);
     }
 
-    // --- ✨ ALTERAÇÃO AQUI: Novo Endpoint GET ---
-    /**
-     * Endpoint para o PROFESSOR logado listar SUAS turmas.
-     */
-    @GetMapping("/minhas") // URL: /api/v1/turmas/minhas
+    @GetMapping("/minhas")
     @PreAuthorize("hasAuthority('ROLE_PROFESSOR')")
     public ResponseEntity<List<TurmaResponseDTO>> listarMinhasTurmas() {
-        
-        // 1. Pega o usuário (Professor) logado
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String emailProfessor = authentication.getName();
         Usuario professor = usuarioRepository.findByEmail(emailProfessor)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Professor não encontrado"));
-
-        // 2. Usa o método do repository que criamos
         List<Turma> turmasDoProfessor = turmaRepository.findByProfessorId(professor.getId());
-
-        // 3. Converte a lista de Turma (Entidade) para uma lista de TurmaResponseDTO
         List<TurmaResponseDTO> responseDTOs = turmasDoProfessor.stream()
-                .map(this::mapToTurmaResponseDTO) // Usa o helper para converter cada turma
+                .map(this::mapToTurmaResponseDTO)
                 .collect(Collectors.toList());
-
-        // 4. Retorna a lista com status OK
         return ResponseEntity.ok(responseDTOs);
     }
 
-    // --- ✨ ALTERAÇÃO AQUI: Método Helper ---
-    /**
-     * Converte uma entidade Turma para o DTO TurmaResponseDTO.
-     * Evita repetição de código entre criarTurma e listarMinhasTurmas.
-     */
+    @GetMapping("/{turmaId}/alunos")
+    @PreAuthorize("hasAuthority('ROLE_PROFESSOR')")
+    public ResponseEntity<List<AlunoMatriculadoDTO>> listarAlunosDaTurma(@PathVariable Long turmaId) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        Usuario professor = usuarioRepository.findByEmail(authentication.getName())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Professor não autenticado"));
+
+        Turma turma = turmaRepository.findById(turmaId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Turma não encontrada"));
+        if (!turma.getProfessor().getId().equals(professor.getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Esta turma não pertence a você");
+        }
+
+        List<Matricula> matriculas = matriculaRepository.findByTurmaId(turmaId);
+
+        // --- ✨ ALTERAÇÃO AQUI: Linha corrigida ---
+        // A conversão (stream) é feita na lista 'matriculas' e o resultado é ATRIBUÍDO a 'alunosDTO'
+        List<AlunoMatriculadoDTO> alunosDTO = matriculas.stream()
+                .map(matricula -> new AlunoMatriculadoDTO(
+                        matricula.getAluno().getId(),
+                        matricula.getAluno().getNome(),
+                        matricula.getAluno().getMatriculaRa(),
+                        matricula.getAluno().getEmail()
+                ))
+                .collect(Collectors.toList());
+
+        return ResponseEntity.ok(alunosDTO);
+    }
+
     private TurmaResponseDTO mapToTurmaResponseDTO(Turma turma) {
         return new TurmaResponseDTO(
             turma.getId(),
             turma.getNomeTurma(),
             turma.getSemestre(),
-            turma.getProfessor().getNome(), // Assume que professor não é nulo
-            turma.getDisciplina().getNome(), // Assume que disciplina não é nula
+            turma.getProfessor().getNome(),
+            turma.getDisciplina().getNome(),
             turma.getDisciplina().getCodigo()
         );
     }
